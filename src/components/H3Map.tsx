@@ -1,64 +1,52 @@
 import React, { useEffect, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import * as h3 from 'h3-js';
+import * as mapUtill from '../utils/mapUtil.ts';
+import axios from 'axios';
 
-type Props = {};
 const mapOptions = {
-    center: new naver.maps.LatLng(37.544186, 127.044127),
+    center: new window.naver.maps.LatLng(37.544186, 127.044127),
     zoom: 11,
 };
-const map = new naver.maps.Map('map', mapOptions);
 
-let polygon = new naver.maps.Polygon({
-    map: map,
-    paths: [[]],
-    fillColor: "#ff0000",
-    fillOpacity: 0.3,
-    strokeColor: "#ff0000",
-    strokeOpacity: 0.6,
-    strokeWeight: 3,
-});
-
-const getH3Index = (e) => {
-    const coord = e.coord;
-    const hex = h3.latLngToCell(coord.y, coord.x, 10);
-    return hex;
-};
-
-const drawPolygon = (polygon, polyPath) => {
-    if (polygon) polygon.setPaths(polyPath)
-}
-
-const cellMaps = (data) => {
-    const indexList = data?.map((item) => item.index);
-    return h3.cellsToMultiPolygon(indexList, true);
-};
-
-const makePolyPath = (Multipolygon) => {
-    const path = Multipolygon?.map(poly => {
-        const innerPoly = poly[0].map((item) => {
-            return new naver.maps.LatLng(item[1], item[0]);
-        });
-
-        return innerPoly;
-    });
-    return path;
-}
-
+type Props = {};
 const H3Map = ({ }: Props) => {
     const fetcher = (url:string) => fetch('http://localhost:8000' + url).then(res => res.json());
     const { data } = useSWR('/api/h3', fetcher);
     const [hexList, setHexList] = useState<string[]>([]);
-
+    const [map, setMap] = useState(null);
+    const [newPolygon, setNewPolygon] = useState(null);
+    const [polygon, setPolygon] = useState(null);
+    
     const addHex = (e) => {
-        const hex = getH3Index(e);
+        const hex = mapUtill.getH3Index(e);
         setHexList([...hexList, hex]);
     }
 
     useEffect(() => {
         let newPolyPath = h3.cellsToMultiPolygon(hexList, true);
-        const polyPath = makePolyPath(newPolyPath);
-        let newPolygon = new naver.maps.Polygon({
+        const polyPath = mapUtill.makePolyPath(newPolyPath);
+
+        newPolygon && newPolygon?.setPaths(polyPath);
+        map && naver.maps.Event.addListener(map, 'click', addHex)
+    }, [map, hexList])
+    
+
+    useEffect(() => {
+        if (data) {
+            const polyPath = mapUtill.makePolyPath(mapUtill.cellMaps(data));
+            mapUtill.drawPolygon(polygon, polyPath);
+        }
+
+    }, [data, polygon]);
+
+    const postPolygonSet = (hexList) =>{
+        const data = {
+            indexs: hexList
+        }
+        setHexList([]);
+        newPolygon.setMap(null)
+        setNewPolygon(new naver.maps.Polygon({
             map: map,
             paths: [[]],
             fillColor: "#0000ff",
@@ -66,25 +54,43 @@ const H3Map = ({ }: Props) => {
             strokeColor: "#0000ff",
             strokeOpacity: 0.6,
             strokeWeight: 3,
-        });
+        }));
 
-        newPolygon.setPaths(polyPath);
-        naver.maps.Event.addListener(map, 'click', addHex)
-    }, [hexList])
+        mutate('http://localhost:8000/api/h3')
+        axios.post('http://localhost:8000/api/h3', {
+            indexs: hexList
+        })
+    }
 
-    
+    useEffect(()=>{
+        let map = new naver.maps.Map('map', mapOptions);
+          setMap(map);
+          setNewPolygon(new naver.maps.Polygon({
+            map: map,
+            paths: [[]],
+            fillColor: "#0000ff",
+            fillOpacity: 0.3,
+            strokeColor: "#0000ff",
+            strokeOpacity: 0.6,
+            strokeWeight: 3,
+        }));
 
-    useEffect(() => {
-        if (data) {
-            const polyPath = makePolyPath(cellMaps(data));
-            drawPolygon(polygon, polyPath);
-        }
+        setPolygon(new naver.maps.Polygon({
+            map: map,
+            paths: [[]],
+            fillColor: "#ff0000",
+            fillOpacity: 0.3,
+            strokeColor: "#ff0000",
+            strokeOpacity: 0.6,
+            strokeWeight: 3,
+        }));
+    },[]);
 
-    }, [data])
     return (
         <div>
             <div>H3Map</div>
-            <button>send!</button>
+            <div id="map" style={{width: '100%', height:'500px'}} />
+            <button onClick={()=>{postPolygonSet(hexList)}}>send!</button>
         </div>
     )
 };
