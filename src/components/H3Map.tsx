@@ -1,27 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import * as h3 from 'h3-js';
-import * as mapUtill from '../utils/mapUtil.ts';
+import * as mapUtill from '../utils/mapUtil';
+// @ts-ignore
+import {Polygon, ArrayOfCoords, Map} from 'navermaps';
 import axios from 'axios';
-
-const mapOptions = {
-    center: new window.naver.maps.LatLng(37.544186, 127.044127),
-    zoom: 11,
-};
+import { mapOptions, newPolygonOptions, polygonOptions } from '../constants';
 
 type Props = {};
+
 const H3Map = ({ }: Props) => {
     const fetcher = (url:string) => fetch('http://localhost:8000' + url).then(res => res.json());
-    const { data } = useSWR('/api/h3', fetcher);
+    const { data, mutate } = useSWR('/api/h3', fetcher);
     const [hexList, setHexList] = useState<string[]>([]);
-    const [map, setMap] = useState(null);
-    const [newPolygon, setNewPolygon] = useState(null);
-    const [polygon, setPolygon] = useState(null);
-    
-    const addHex = (e) => {
-        const hex = mapUtill.getH3Index(e);
-        setHexList([...hexList, hex]);
-    }
+    const [map, setMap] = useState<Map>();
+    const [newPolygon, setNewPolygon] = useState<Polygon>();
+    const [polygon, setPolygon] = useState<Polygon>();
+
+    useEffect(()=>{
+        let map = new Map('map', mapOptions);
+        setMap(map);
+        setNewPolygon(new Polygon({
+            map: map,
+            paths: [[]],
+            ...newPolygonOptions
+        }));
+
+        setPolygon(new Polygon({
+            map: map,
+            paths: [[]],
+            ...polygonOptions
+        }));
+    },[]);
 
     useEffect(() => {
         let newPolyPath = h3.cellsToMultiPolygon(hexList, true);
@@ -35,56 +45,45 @@ const H3Map = ({ }: Props) => {
     useEffect(() => {
         if (data) {
             const polyPath = mapUtill.makePolyPath(mapUtill.cellMaps(data));
-            mapUtill.drawPolygon(polygon, polyPath);
+            polygon && drawPolygon(polygon, polyPath);
         }
 
     }, [data, polygon]);
+    
+    const addHex = (e:EventListener) => {
+        const hex = mapUtill.getH3Index(e);
+        setHexList([...hexList, hex]);
+    }
 
-    const postPolygonSet = (hexList) =>{
-        const data = {
-            indexs: hexList
-        }
+    const drawPolygon = (polygon: Polygon, polyPath: ArrayOfCoords[]) => {
+        if (polygon) polygon.setPaths(polyPath)
+    }
+
+    const removeNewPolygon = () => {
         setHexList([]);
-        newPolygon.setMap(null)
-        setNewPolygon(new naver.maps.Polygon({
+        newPolygon && newPolygon.setMap(null);
+
+        setNewPolygon(new Polygon({
             map: map,
             paths: [[]],
-            fillColor: "#0000ff",
-            fillOpacity: 0.3,
-            strokeColor: "#0000ff",
-            strokeOpacity: 0.6,
-            strokeWeight: 3,
+            ...newPolygonOptions
         }));
+    }
 
-        mutate('http://localhost:8000/api/h3')
+    const postPolygonSet = (hexList: string[]) =>{
+        removeNewPolygon();
+
+        mutate([
+            ...data,
+            ...(hexList.map(hex=>{return {index: hex}}))
+        ], false);
+
         axios.post('http://localhost:8000/api/h3', {
             indexs: hexList
         })
     }
 
-    useEffect(()=>{
-        let map = new naver.maps.Map('map', mapOptions);
-          setMap(map);
-          setNewPolygon(new naver.maps.Polygon({
-            map: map,
-            paths: [[]],
-            fillColor: "#0000ff",
-            fillOpacity: 0.3,
-            strokeColor: "#0000ff",
-            strokeOpacity: 0.6,
-            strokeWeight: 3,
-        }));
-
-        setPolygon(new naver.maps.Polygon({
-            map: map,
-            paths: [[]],
-            fillColor: "#ff0000",
-            fillOpacity: 0.3,
-            strokeColor: "#ff0000",
-            strokeOpacity: 0.6,
-            strokeWeight: 3,
-        }));
-    },[]);
+    
 
     return (
         <div>
