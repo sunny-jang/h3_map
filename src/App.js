@@ -1,4 +1,3 @@
-import logo from './logo.svg';
 import './App.css';
 import H3Map from './components/H3Map.tsx';
 
