@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import useSWR, { mutate } from 'swr';
+import useSWR from 'swr';
 import * as h3 from 'h3-js';
-import * as mapUtill from '../utils/mapUtil';
 // @ts-ignore
-import {Polygon, ArrayOfCoords, Map} from 'navermaps';
+import * as mapUtill from '../utils/mapUtil.ts';
 import axios from 'axios';
-import { mapOptions, newPolygonOptions, polygonOptions } from '../constants';
+import 'navermaps';
+// @ts-ignore
+import { mapOptions, newPolygonOptions, polygonOptions } from '../constants.ts';
 
 type Props = {};
 
@@ -13,20 +14,20 @@ const H3Map = ({ }: Props) => {
     const fetcher = (url:string) => fetch('http://localhost:8000' + url).then(res => res.json());
     const { data, mutate } = useSWR('/api/h3', fetcher);
     const [hexList, setHexList] = useState<string[]>([]);
-    const [map, setMap] = useState<Map>();
-    const [newPolygon, setNewPolygon] = useState<Polygon>();
-    const [polygon, setPolygon] = useState<Polygon>();
+    const [map, setMap] = useState<naver.maps.Map>();
+    const [newPolygon, setNewPolygon] = useState<naver.maps.Polygon>();
+    const [polygon, setPolygon] = useState<naver.maps.Polygon>();
 
     useEffect(()=>{
-        let map = new Map('map', mapOptions);
+        let map = new naver.maps.Map('map', mapOptions);
         setMap(map);
-        setNewPolygon(new Polygon({
+        setNewPolygon(new naver.maps.Polygon({
             map: map,
             paths: [[]],
             ...newPolygonOptions
         }));
 
-        setPolygon(new Polygon({
+        setPolygon(new naver.maps.Polygon({
             map: map,
             paths: [[]],
             ...polygonOptions
@@ -55,7 +56,7 @@ const H3Map = ({ }: Props) => {
         setHexList([...hexList, hex]);
     }
 
-    const drawPolygon = (polygon: Polygon, polyPath: ArrayOfCoords[]) => {
+    const drawPolygon = (polygon: naver.maps.Polygon, polyPath: naver.maps.ArrayOfCoords[]) => {
         if (polygon) polygon.setPaths(polyPath)
     }
 
@@ -63,7 +64,7 @@ const H3Map = ({ }: Props) => {
         setHexList([]);
         newPolygon && newPolygon.setMap(null);
 
-        setNewPolygon(new Polygon({
+        setNewPolygon(new naver.maps.Polygon({
             map: map,
             paths: [[]],
             ...newPolygonOptions
@@ -74,16 +75,14 @@ const H3Map = ({ }: Props) => {
         removeNewPolygon();
 
         mutate([
+            ...(hexList.map(hex=>{return {index: hex}})),
             ...data,
-            ...(hexList.map(hex=>{return {index: hex}}))
         ], false);
 
         axios.post('http://localhost:8000/api/h3', {
             indexs: hexList
         })
     }
-
-    
 
     return (
         <div>
