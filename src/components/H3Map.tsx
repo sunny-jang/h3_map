@@ -52,10 +52,10 @@ const H3Map = ({ }: Props) => {
             const polyPath = mapUtill.makePolyPath(mapUtill.cellMaps(data));
             polygon && drawPolygon(polygon, polyPath);
 
-            setInitData(true);
+            if(map) { setInitData(true) };
         }
         
-    }, [data, polygon]);
+    }, [data, polygon, map]);
 
     const addHex = (e: naver.maps.PointerEvent) => {
         const hex = mapUtill.getH3Index(e);
