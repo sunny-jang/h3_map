@@ -1,6 +1,6 @@
 export const mapOptions = {
     center: new window.naver.maps.LatLng(37.544186, 127.044127),
-    zoom: 11,
+    zoom: 13,
 };
 
 export const newPolygonOptions = {
