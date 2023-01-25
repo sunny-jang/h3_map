@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import * as h3 from 'h3-js';
-// @ts-ignore
-import * as mapUtill from '../utils/mapUtil.ts';
+import * as mapUtill from '../utils/mapUtil';
 import axios from 'axios';
-// @ts-ignore
-import { mapOptions, newPolygonOptions, polygonOptions } from '../constants.ts';
+import { mapOptions, newPolygonOptions, polygonOptions } from '../constants';
 
 type Props = {};
 
 const H3Map = ({ }: Props) => {
-    const fetcher = (url: string) => fetch('http://localhost:4000' + url).then(res => res.json());
+    const fetcher = (url: string) => fetch('http://localhost:8000' + url).then(res => res.json());
     const { data, mutate } = useSWR('/api/h3', fetcher);
     const [hexList, setHexList] = useState<string[]>([]);
     const [map, setMap] = useState<naver.maps.Map>();
     const [newPolygon, setNewPolygon] = useState<naver.maps.Polygon>();
     const [polygon, setPolygon] = useState<naver.maps.Polygon>();
+    const [initData, setInitData] = useState(false);
 
     useEffect(() => {
         let map = new naver.maps.Map('map', mapOptions);
@@ -31,13 +30,6 @@ const H3Map = ({ }: Props) => {
             paths: [[]],
             ...polygonOptions
         }));
-
-        let listener = map && naver.maps.Event.addListener(map, 'click', (e) => {
-            if (addHex(e)) {
-                naver.maps.Event.removeListener(listener);
-            }
-        });
-
     }, []);
 
     useEffect(() => {
@@ -45,30 +37,29 @@ const H3Map = ({ }: Props) => {
         const polyPath = mapUtill.makePolyPath(newPolyPath);
 
         newPolygon && newPolygon?.setPaths(polyPath);
-        let listener = map && naver.maps.Event.addListener(map, 'click', (e) => {
-            if (addHex(e)) {
-                naver.maps.Event.removeListener(listener);
-            }
-        });
-    }, [map, hexList])
 
+        if(map && initData) {
+            let listener = naver.maps.Event.addListener(map, 'click', (e) => {
+                if(addHex(e)) {
+                    naver.maps.Event.removeListener(listener)
+                } 
+            });
+        }
+    }, [hexList, initData])
 
     useEffect(() => {
         if (data) {
             const polyPath = mapUtill.makePolyPath(mapUtill.cellMaps(data));
             polygon && drawPolygon(polygon, polyPath);
-        }
 
-        let listener = map && naver.maps.Event.addListener(map, 'click', (e) => {
-            if (addHex(e)) {
-                naver.maps.Event.removeListener(listener);
-            }
-        });
+            setInitData(true);
+        }
+        
     }, [data, polygon]);
 
-    const addHex = (e: EventListener) => {
+    const addHex = (e: naver.maps.PointerEvent) => {
         const hex = mapUtill.getH3Index(e);
-        let newHex = data && checkDup(data.map((item) => item.index), hexList, hex);
+        let newHex = data && checkDup(data.map((item:Hex) => item.index), hexList, hex);
         if (newHex) { setHexList([...hexList, newHex]); return true }
         else return false;
     }
@@ -88,13 +79,11 @@ const H3Map = ({ }: Props) => {
         }));
     }
 
-    const checkDup = (currentHex, selectedHex, hex) => {
+    const checkDup = (currentHex: string[], selectedHex: string[], hex: string) => {
         if (selectedHex.includes(hex) || currentHex.includes(hex)) {
-            alert("이미 선택된 지역입니다.")
-            return null;
+            return;
         }
         return hex;
-
     }
 
     const postPolygonSet = (hexList: string[]) => {
@@ -104,16 +93,15 @@ const H3Map = ({ }: Props) => {
             ...data,
         ], false);
 
-        axios.post('http://localhost:4000/api/h3', {
+        axios.post('http://localhost:8000/api/h3', {
             indexs: hexList
         })
     }
 
     return (
         <div>
-            <div>H3Map</div>
             <div id="map" style={{ width: '100%', height: '500px' }} />
-            <button onClick={() => { postPolygonSet(hexList) }}>send!</button>
+            <button onClick={() => { postPolygonSet(hexList) }}>새로운 폴리곤 전송 버튼</button>
         </div>
     )
 };
