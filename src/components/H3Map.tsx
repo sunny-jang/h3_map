@@ -22,7 +22,7 @@ function useListenerEvent(
 }
 
 const H3Map = ({ }: Props) => {
-    const fetcher = (url: string) => fetch('http://localhost:8001' + url).then(res => res.json());
+    const fetcher = (url: string) => fetch('http://localhost:8000' + url).then(res => res.json());
     const { data, mutate } = useSWR('/api/h3', fetcher);
     const [hexList, setHexList] = useState<string[]>([]);
     const [map, setMap] = useState<naver.maps.Map>();
