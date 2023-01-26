@@ -1,70 +1,52 @@
-# Getting Started with Create React App
+## 구상 및 설계 방식
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+1. 맵 이니셜라이징
+- map, 초기 polygon 이니셜라이징 라이프 사이클 useEffect를 사용하여 훅으로 구현
+- map, polygon 옵션들을 constants 파일로 분리
 
-## Available Scripts
+2. 서버에서 받아온 폴리곤 index를 좌표값으로 변환해 영역 생성
+- utills에 h3를 사용해 데이터를 파싱하는 함수들을 생성
+- 각 역할마다 분리 후 재사용성 고려
+- 데이터 저장으로 swr 사용
 
-In the project directory, you can run:
+3. 내가 선택한 영역의 폴리곤 표시하기
+- 선택된 영역의 index 리스트를 저장할 hexList 로컬 스테이트 생성
+- 기존의 영역에서 duplicate 체크
+- 새로 선택한 지역에서 duplicate 체크
+- 중복되지 않는 영역 index만 hexList에 추가
+- 업데이트된 hexList를 참조하는 eventListener 할당 및 기존 할당 제거
+- hexList 업데이트 시 마다 신규 폴리곤 객체에 path 추가
 
-### `npm start`
+4. 선택 영역 전송하며 데이터 리셋
+- hexList를 {indexs: hexList} 형식으로 서버에 전송
+- response를 받아오기 전 hexList로 로컬 폴리곤 영역을 업데이트
+- 새로 선택된 hexList 리셋, 기존 신규 폴리곤 영역을 제거, 새로운 폴리곤 객체 생성
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 프로젝트 구조
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+/h3_map
+    /public
+         index.html
+    /types
+        index.d.ts
+        hex.d.ts
+    /src
+        /components
+           H3Map.tsx
+    /utills
+        mapUtills.ts
+    App.tsx
+    tsconfig.json
 
-### `npm test`
+/server - localhost:8000
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 기타 참고 사항
 
-### `npm run build`
+클릭 이벤트 리스너를 적용시키며 겪은 이벤트 리스너 lexcical scope 그리고,
+useCallback 사용에 대해 글로 남겨보았습니다. 
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+[https://sunny-jang.tistory.com/64](https://sunny-jang.tistory.com/64)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## 구현 이미지
+![image](https://user-images.githubusercontent.com/35230852/214820186-9e93e901-622f-443a-9004-eb87dce4f66f.png)
