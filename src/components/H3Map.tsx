@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import * as h3 from 'h3-js';
 import * as mapUtill from '../utils/mapUtil';
@@ -7,14 +7,35 @@ import { mapOptions, newPolygonOptions, polygonOptions } from '../constants';
 
 type Props = {};
 
+function useListenerEvent(
+    target: any,
+    eventType: string,
+    listener: any,
+) {
+    useEffect(() => {
+        const event = target && naver.maps.Event.addListener(target, eventType, listener);
+
+        return () => {
+            naver.maps.Event.removeListener(event);
+        }
+    }, [target, listener])
+}
+
 const H3Map = ({ }: Props) => {
-    const fetcher = (url: string) => fetch('http://localhost:8000' + url).then(res => res.json());
+    const fetcher = (url: string) => fetch('http://localhost:8001' + url).then(res => res.json());
     const { data, mutate } = useSWR('/api/h3', fetcher);
     const [hexList, setHexList] = useState<string[]>([]);
     const [map, setMap] = useState<naver.maps.Map>();
     const [newPolygon, setNewPolygon] = useState<naver.maps.Polygon>();
     const [polygon, setPolygon] = useState<naver.maps.Polygon>();
-    const [initData, setInitData] = useState(false);
+
+    const addHex = (e: naver.maps.PointerEvent) => {
+        const hex = mapUtill.getH3Index(e);
+        let newHex = data && checkDup(data.map((item: Hex) => item.index), hexList, hex);
+        if (newHex) { setHexList([...hexList, newHex]); return }
+    }
+
+    useListenerEvent(map, "click", useCallback(addHex, [hexList, data]));
 
     useEffect(() => {
         let map = new naver.maps.Map('map', mapOptions);
@@ -38,31 +59,17 @@ const H3Map = ({ }: Props) => {
 
         newPolygon && newPolygon?.setPaths(polyPath);
 
-        if(map && initData) {
-            let listener = naver.maps.Event.addListener(map, 'click', (e) => {
-                if(addHex(e)) {
-                    naver.maps.Event.removeListener(listener)
-                } 
-            });
-        }
-    }, [hexList, initData])
+    }, [hexList])
 
     useEffect(() => {
         if (data) {
             const polyPath = mapUtill.makePolyPath(mapUtill.cellMaps(data));
             polygon && drawPolygon(polygon, polyPath);
-
-            if(map) { setInitData(true) };
         }
-        
+
     }, [data, polygon, map]);
 
-    const addHex = (e: naver.maps.PointerEvent) => {
-        const hex = mapUtill.getH3Index(e);
-        let newHex = data && checkDup(data.map((item:Hex) => item.index), hexList, hex);
-        if (newHex) { setHexList([...hexList, newHex]); return true }
-        else return false;
-    }
+
 
     const drawPolygon = (polygon: naver.maps.Polygon, polyPath: naver.maps.ArrayOfCoords[]) => {
         if (polygon) polygon.setPaths(polyPath)
@@ -81,6 +88,7 @@ const H3Map = ({ }: Props) => {
 
     const checkDup = (currentHex: string[], selectedHex: string[], hex: string) => {
         if (selectedHex.includes(hex) || currentHex.includes(hex)) {
+            alert("이미 선택된 지역입니다.")
             return;
         }
         return hex;
@@ -93,7 +101,7 @@ const H3Map = ({ }: Props) => {
             ...data,
         ], false);
 
-        axios.post('http://localhost:8000/api/h3', {
+        axios.post('http://localhost:8001/api/h3', {
             indexs: hexList
         })
     }
