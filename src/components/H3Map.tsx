@@ -51,6 +51,8 @@ const H3Map = ({ }: Props) => {
             paths: [[]],
             ...polygonOptions
         }));
+
+        axios.get('http://localhost:8000/api/h3').then(res => console.log(res))
     }, []);
 
     useEffect(() => {
